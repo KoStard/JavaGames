@@ -1,7 +1,7 @@
 package main;
 
-public abstract class GameTemplate {
-	public abstract void start();
-	public abstract void end();
-	public abstract void reset();
+public interface GameTemplate {
+	void start();
+	void end();
+	void reset();
 }
