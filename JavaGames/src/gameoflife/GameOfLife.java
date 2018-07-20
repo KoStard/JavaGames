@@ -7,10 +7,14 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Rectangle2D;
+import java.util.Deque;
+import java.util.LinkedList;
 import java.util.Random;
 
 import javax.swing.JButton;
@@ -43,8 +47,13 @@ public class GameOfLife extends JFrame implements GameTemplate{
 			working = false;
 	
 	int frameDelay = 150;
+	Deque<boolean[][]> lastGens = new LinkedList<boolean[][]>();
+	final int maxLastGensSize = 40;
 
 	boolean mousePressed = false, reviving = false, dragged = false;
+	
+
+	JButton StartPauseContinueButton = new JButton("Start");
 	
 	public GameOfLife(int blocksWidth, int blocksHeight){
 		random = new Random();
@@ -59,6 +68,50 @@ public class GameOfLife extends JFrame implements GameTemplate{
 		canvas = new Canvas();
 		canvas.setPreferredSize(new Dimension(width, height));
 		canvas.setBackground(backgroundColor);
+		
+		jframe.setFocusable(true);
+		jframe.addKeyListener(new KeyListener() {
+
+			@Override
+			public void keyTyped(KeyEvent e) {
+			}
+
+			@Override
+			public void keyPressed(KeyEvent e) {
+				switch(e.getKeyCode()) {
+				case KeyEvent.VK_LEFT:
+					matrix = getLastGen();
+					pauseCycles();
+					break;
+				case KeyEvent.VK_RIGHT:
+					matrix = getNextGen();
+					pauseCycles();
+					break;
+				case KeyEvent.VK_SPACE:
+					if (working) pauseCycles();
+					else startCycles();
+//					switch(StartPauseContinueButton.getText()){
+//					case "Start":
+//						StartPauseContinueButton.setText("Pause");
+//						startCycles();
+//						break;
+//					case "Pause":
+//						StartPauseContinueButton.setText("Resume");
+//						pauseCycles();
+//						break;
+//					case "Resume":
+//						StartPauseContinueButton.setText("Pause");
+//						startCycles();
+//						break;
+//					}
+				}
+			}
+
+			@Override
+			public void keyReleased(KeyEvent e) {
+			}
+			
+		});
 		
 		
 		canvas.addMouseListener(new MouseListener() {
@@ -121,29 +174,31 @@ public class GameOfLife extends JFrame implements GameTemplate{
 			
 		});
 		
-		
-		JButton StartPauseContinueButton = new JButton("Start");
+		StartPauseContinueButton.setFocusable(false);
 		StartPauseContinueButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				switch(StartPauseContinueButton.getText()){
-				case "Start":
-					StartPauseContinueButton.setText("Pause");
-					startCycles();
-					break;
-				case "Pause":
-					StartPauseContinueButton.setText("Resume");
-					pauseCycles();
-					break;
-				case "Resume":
-					StartPauseContinueButton.setText("Pause");
-					startCycles();
-					break;
-				}
+				if (working) pauseCycles();
+				else startCycles();
+//				switch(StartPauseContinueButton.getText()){
+//				case "Start":
+//					StartPauseContinueButton.setText("Pause");
+//					startCycles();
+//					break;
+//				case "Pause":
+//					StartPauseContinueButton.setText("Resume");
+//					pauseCycles();
+//					break;
+//				case "Resume":
+//					StartPauseContinueButton.setText("Pause");
+//					startCycles();
+//					break;
+//				}
 			}
 		});
 		
 		JButton ResetButton = new JButton("Reset");
+		ResetButton.setFocusable(false);
 		ResetButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -152,6 +207,7 @@ public class GameOfLife extends JFrame implements GameTemplate{
 		});
 		
 		JButton RandomizeButton = new JButton("Randomize");
+		RandomizeButton.setFocusable(false);
 		RandomizeButton.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -159,11 +215,33 @@ public class GameOfLife extends JFrame implements GameTemplate{
 			}
 		});
 		
+		JButton LastGenButton = new JButton("<< Last");
+		LastGenButton.setFocusable(false);
+		LastGenButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				matrix = getLastGen();
+				pauseCycles();
+			}
+		});
+		
+		JButton NextGenButton = new JButton("Next >>");
+		NextGenButton.setFocusable(false);
+		NextGenButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				matrix = getNextGen();
+				pauseCycles();
+			}
+		});
+		
 		JPanel btnpanel = new JPanel();
 
+		btnpanel.add(LastGenButton);
 		btnpanel.add(RandomizeButton);
 		btnpanel.add(StartPauseContinueButton);
 		btnpanel.add(ResetButton);
+		btnpanel.add(NextGenButton);
 		
 		jframe.getContentPane().add(BorderLayout.CENTER, canvas);
 		jframe.getContentPane().add(BorderLayout.SOUTH, btnpanel);
@@ -199,6 +277,7 @@ public class GameOfLife extends JFrame implements GameTemplate{
 	}
 	
 	public boolean[][] getNextGen(){
+		addToLastGens(matrix);
 		boolean[][] newGen = new boolean[blocksHeight][blocksWidth];
 		for (int y = 0; y < matrix.length; y++) {
 			for (int x = 0; x < matrix[0].length; x++) {
@@ -215,11 +294,26 @@ public class GameOfLife extends JFrame implements GameTemplate{
 		return newGen;
 	}
 	
+	public boolean[][] getLastGen() {
+		boolean[][] last = lastGens.pollLast();
+		return (last!=null?last:matrix);
+	}
+	
+	public void addToLastGens(boolean[][] matrix) {
+		lastGens.addLast(matrix);
+		if (lastGens.size() > maxLastGensSize) {
+			lastGens.pollFirst();
+		}
+	}
+	
 	public boolean[][] getClearGen(){
-		return new boolean[blocksHeight][blocksWidth];
+		addToLastGens(matrix);
+		boolean[][] newGen = new boolean[blocksHeight][blocksWidth];
+		return newGen;
 	}
 	
 	public boolean[][] getRandomGen() {
+		addToLastGens(matrix);
 		boolean[][] newGen = new boolean[blocksHeight][blocksWidth];
 		for (int y = 0; y < matrix.length; y++) {
 			for (int x = 0; x < matrix[0].length; x++) {
@@ -265,15 +359,20 @@ public class GameOfLife extends JFrame implements GameTemplate{
 	}
 	
 	public void startCycles() {
-		working = true;
+		if (!working) {
+			working = true;
+			StartPauseContinueButton.setText("Pause");
+		}
 	}
 	
 	public void pauseCycles() {
-		working = false;
+		if (working) {
+			working = false;
+			StartPauseContinueButton.setText("Resume");
+		}
 	}
 
 	@Override
 	public void reset() {
-		
 	}
 }
